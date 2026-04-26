@@ -1,4 +1,4 @@
-# Rocket Guidance via Reinforcement Learning
+# Missile Guidance via Reinforcement Learning
 
 A reinforcement learning agent trained to intercept a moving, evasive target
 using **Proximal Policy Optimization (PPO)** and realistic **Thrust Vector Control (TVC)**
