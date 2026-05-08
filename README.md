@@ -1,20 +1,26 @@
-# Missile Guidance via Reinforcement Learning
+# Rocket Guidance via Reinforcement Learning
 
-A reinforcement learning agent trained to intercept a moving, evasive target
-using **Proximal Policy Optimization (PPO)** and realistic **Thrust Vector Control (TVC)**
-physics. Built from scratch across four environment versions and a five-stage
-curriculum, with observations grounded in real guidance system principles.
+A reinforcement learning agent trained to intercept a moving, evasive target in a custom 2D physics environment. The agent controls a continuously thrusting rocket using only nozzle gimbal rate — a single continuous input that deflects thrust over time — and must intercept the target before fuel runs out.
 
 ---
 
-## Problem Overview
+## Background
 
-The agent controls a continuously thrusting rocket in a 2D arena. Its only
-control input is nozzle gimbal rate — a single continuous value that deflects
-the nozzle, creating torque that rotates the body and redirects thrust over time.
-The goal is to intercept a moving target with the rocket's nose tip before fuel runs out.
+The main goal was to get an agent to learn how to control an interceptor and see if it could adapt and intercept a moving target. 
 
-**Key constraints:**
+The idea came from watching footage of an aerospace defense system struggling to track unpredictably moving targets. The system appeared rigid and heavily rule-based, which led me to wonder whether reinforcement learning could adapt more effectively to changing behavior.
+
+The problem is that there's no off-the-shelf environment for this. Generic RL benchmarks stuff like pendulum, lunar lander, MuJoCo arms, humanoids. These are already well-supported and well-documented, but they're also everywhere. I wanted to work on something that required building from the ground up: a custom problem, a custom environment, and a guidance agent that had to learn interception behavior without being told how.
+
+Before jumping to a full 3D simulator like Isaac Lab, the approach was to get an abstract version working first. A 2D Gymnasium environment with realistic TVC physics, a five-stage curriculum, and observations grounded in real guidance system principles. The idea was to validate the approach in a simpler space before scaling it up.
+
+---
+
+## Problem
+
+The agent controls a rocket in a 2D arena. Its only control input is nozzle gimbal rate — a single continuous value that deflects the nozzle, creating torque that rotates the body and redirects thrust over time. The goal is to intercept a moving, evasive target with the rocket's nose tip before fuel runs out.
+
+**Constraints:**
 - Single control input: gimbal rate (continuous, `[-1, 1]`)
 - No throttle: constant thrust while fuel remains
 - Realistic TVC physics: gimbal creates torque only, thrust always along body axis
@@ -42,9 +48,7 @@ The goal is to intercept a moving target with the rocket's nose tip before fuel 
 
 ## Environment
 
-Built from scratch in Python using Gymnasium and Pygame. The 900×650 arena
-places the rocket on the left with the target spawning in a configurable region
-depending on curriculum stage.
+Built from scratch in Python using Gymnasium and Pygame. The 900×650 arena places the rocket on the left with the target spawning in a configurable region depending on curriculum stage.
 
 **Physics model:**
 - Thrust acts exclusively along the rocket body axis
@@ -62,8 +66,7 @@ depending on curriculum stage.
 - Obstacle proximity features
 - Normalized fuel remaining
 
-All observations are physically obtainable by onboard sensors. No privileged
-information (future target position, ground-truth target acceleration) is included.
+All observations are physically obtainable by onboard sensors. No privileged information (future target position, ground-truth target acceleration) is included.
 
 ---
 
@@ -84,16 +87,13 @@ ent_coef      = 0.005
 n_envs        = 8
 ```
 
-**Observation normalization:** VecNormalize (observations only, `norm_reward=False`).
-Model checkpoints and normalization statistics are always saved together via a
-custom `SaveVecNormalizeCallback` to prevent evaluation mismatch.
+**Observation normalization:** VecNormalize (observations only, `norm_reward=False`). Model checkpoints and normalization statistics are always saved together via a custom `SaveVecNormalizeCallback` to prevent evaluation mismatch.
 
 ---
 
-## Curriculum Learning
+## Curriculum
 
-Training progresses through five stages of increasing difficulty, each fine-tuned
-from the previous stage's checkpoint.
+Training progresses through five stages of increasing difficulty, each fine-tuned from the previous stage's checkpoint.
 
 | Stage | Target Behavior               | Obstacles | Key Challenge                            |
 |-------|-------------------------------|-----------|------------------------------------------|
@@ -104,17 +104,13 @@ from the previous stage's checkpoint.
 | 4     | Aggressive evasion            | 2         | Sharp dodges, committed lead pursuit     |
 | 5     | Evasion + obstacle luring     | 2–3       | Target uses obstacles as shields         |
 
-Stages requiring significant behavioral restructuring (moving-target transitions)
-use near-scratch entropy coefficients rather than conservative fine-tuning,
-because the policy's strategy — not just its magnitude — must change.
+Stages requiring significant behavioral restructuring (moving-target transitions) use near-scratch entropy coefficients rather than conservative fine-tuning, because the policy's strategy — not just its magnitude — must change.
 
 ---
 
 ## Reward Design
 
-The reward function is structured so that the progress signal dominates all
-penalties combined. Early iterations with penalty-heavy designs caused the agent
-to converge on inaction as the optimal strategy.
+The reward function is structured so that the progress signal dominates all penalties combined. Early iterations with penalty-heavy designs caused the agent to converge on inaction as the optimal strategy.
 
 ```
 Primary:    progress toward target (distance reduction, normalized)
@@ -123,9 +119,7 @@ Penalties:  obstacle proximity, gimbal rate, angular velocity
 Terminal:   +30 hit, -8 obstacle, -6 out of bounds, -4 fuel out, -2 timeout
 ```
 
-**Critical design rule:** If penalties can outweigh progress at the dominant
-operating point, the agent will learn to do nothing. Progress must dominate
-unambiguously, especially early in training.
+If penalties can outweigh progress at the dominant operating point, the agent learns to do nothing. Progress must dominate unambiguously, especially early in training.
 
 ---
 
@@ -133,42 +127,23 @@ unambiguously, especially early in training.
 
 **Stage 3 (evasive target + 1 obstacle):** ~76% hit rate against scripted evasion
 
-**Human-controlled evaluation:** A human operator controlling the target with
-WASD keys required between 130 and 150 episodes across repeated 10-episode
-runs before achieving a full run with zero hits. The policy landed at least one
-hit in every single run prior to that — against a human with full visual
-information and deliberate evasive intent.
+**Human-controlled evaluation:** A human operator controlling the target with WASD keys required between 130 and 150 episodes across repeated 10-episode runs before achieving a full run with zero hits. The policy landed at least one hit in every run prior to that — against a human with full visual information and deliberate evasive intent.
 
-**Emergent behavior:** The agent independently developed lead pursuit and
-curved intercept trajectories consistent with **Proportional Navigation** — the
-classical guidance law used in real interceptor systems — without being
-explicitly programmed with it. This emerged from an LOS rate penalty in the
-reward that incentivized minimizing angular line-of-sight drift.
+**Emergent behavior:** The agent independently developed lead pursuit and curved intercept trajectories consistent with Proportional Navigation — the classical guidance law used in real interceptor systems — without being explicitly programmed with it. This emerged from an LOS rate penalty in the reward that incentivized minimizing angular line-of-sight drift.
 
 ---
 
-## Key Challenges Solved
+## Key Challenges
 
-**Thrust-redirect exploit** — Gimbal angle was incorrectly added to the thrust
-direction vector, allowing the policy to redirect thrust at arbitrary angles
-without physically rotating the body. Fixed by separating thrust (body axis only)
-from torque (gimbal only).
+**Thrust-redirect exploit** — Gimbal angle was incorrectly added to the thrust direction vector, allowing the policy to redirect thrust at arbitrary angles without physically rotating the body. Fixed by separating thrust (body axis only) from torque (gimbal only).
 
-**Crossflow glide exploit** — Policy built lateral momentum through prior
-steering then coasted sideways toward the target. Fixed with crossflow
-aerodynamic drag.
+**Crossflow glide exploit** — Policy built lateral momentum through prior steering then coasted sideways toward the target. Fixed with crossflow aerodynamic drag.
 
-**Reward inversion (inaction exploit)** — Penalty terms collectively exceeded
-the progress signal, making doing nothing the optimal strategy. Fixed by
-rebalancing the reward hierarchy.
+**Reward inversion** — Penalty terms collectively exceeded the progress signal, making inaction the optimal strategy. Fixed by rebalancing the reward hierarchy.
 
-**VecNormalize mismatch** — Best model checkpoint was paired with end-of-training
-normalization statistics, corrupting evaluation. Fixed with a synchronized
-checkpoint callback.
+**VecNormalize mismatch** — Best model checkpoint was paired with end-of-training normalization statistics, corrupting evaluation. Fixed with a synchronized checkpoint callback.
 
-**Target freeze bug** — Evasive target computed dodge direction from position
-delta, which oscillated under missile micro-steering and caused the target to
-freeze. Fixed by computing dodge direction from missile velocity vector instead.
+**Target freeze bug** — Evasive target computed dodge direction from position delta, which oscillated under missile micro-steering and caused the target to freeze. Fixed by computing dodge direction from missile velocity vector instead.
 
 ---
 
@@ -184,8 +159,7 @@ freeze. Fixed by computing dodge direction from missile velocity vector instead.
 ## Future Work
 
 - Complete stages 4–5 of the curriculum
-- Add domain randomization: Gaussian noise on LOS rate, quantization error on
-  position, lag on angular velocity — to harden the policy for sim-to-real transfer
+- Add domain randomization: Gaussian noise on LOS rate, quantization error on position, lag on angular velocity — to harden the policy for sim-to-real transfer
 - Implement a proportional navigation baseline for benchmarking
 - Extend to 3D in NVIDIA Isaac Lab
 
@@ -193,13 +167,11 @@ freeze. Fixed by computing dodge direction from missile velocity vector instead.
 
 ## Tech Stack
 
-- Python · Gymnasium · Stable-Baselines3 · PyTorch · NumPy · Pygame
+Python · Gymnasium · Stable-Baselines3 · PyTorch · NumPy · Pygame
 
 ---
 
 ## Documentation
 
-For the full development story and technical lessons:
-
-- [`docs/story.md`](docs/story.md) — complete narrative from PPO from scratch to stage 3
+- [`docs/story.md`](docs/story.md) — complete development narrative from PPO from scratch to stage 3
 - [`docs/insights.md`](docs/insights.md) — distilled technical lessons and design principles
