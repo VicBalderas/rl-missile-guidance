@@ -9,7 +9,7 @@ from environment.rocket_env import RocketInterceptEnv
 # Folder structure (mirrors train.py)
 # =============================================================================
 
-MODELS_ROOT = os.path.join(os.path.dirname(__file__), "..", "models")
+MODELS_ROOT = os.path.join(os.path.dirname(__file__), "models")
 
 
 def stage_dir(stage_index):
@@ -259,13 +259,13 @@ def evaluate_human(stage=0, n_episodes=10, checkpoint=None):
 # =============================================================================
 
 if __name__ == "__main__":
-    # evaluate(
-    #     stage=3,
-    #     n_episodes=10,
-    #     render=True,
-    #     checkpoint=None,
-    #     test_on_stage=2,
-    # )
+    evaluate(
+        stage=0,
+        n_episodes=10,
+        render=True,
+        checkpoint=None,
+        test_on_stage=None,
+    )
 
     # To run human evaluation, uncomment below:
-    evaluate_human(stage=2, n_episodes=10)
+    # evaluate_human(stage=2, n_episodes=10)

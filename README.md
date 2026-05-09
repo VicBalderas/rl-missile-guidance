@@ -1,6 +1,8 @@
 # Rocket Guidance via Reinforcement Learning
 
-A reinforcement learning agent trained to intercept a moving, evasive target in a custom 2D physics environment. The agent controls a continuously thrusting rocket using only nozzle gimbal rate — a single continuous input that deflects thrust over time — and must intercept the target before fuel runs out.
+A reinforcement learning agent trained to intercept a moving, evasive target in a custom 2D physics environment. The agent controls a continuously thrusting rocket using only nozzle gimbal rate (a single continuous input that deflects thrust over time) and must intercept the target before fuel runs out.
+
+*(Stage 3 policy vs. human-controlled target)*
 
 ![Policy VS Human](assets/policy_vs_human.gif)
 
@@ -8,11 +10,11 @@ A reinforcement learning agent trained to intercept a moving, evasive target in 
 
 ## Background
 
-The main goal was to get an agent to learn how to control an interceptor and see if it could adapt and intercept a moving target. 
+The main goal was to get an agent to learn how to control an interceptor and see if it could adapt and intercept a moving target.
 
 The idea came from watching footage of an aerospace defense system struggling to track unpredictably moving targets. The system appeared rigid and heavily rule-based, which led me to wonder whether reinforcement learning could adapt more effectively to changing behavior.
 
-The problem is that there's no off-the-shelf environment for this. Generic RL benchmarks stuff like pendulum, lunar lander, MuJoCo arms, humanoids. These are already well-supported and well-documented, but they're also everywhere. I wanted to work on something that required building from the ground up: a custom problem, a custom environment, and a guidance agent that had to learn interception behavior without being told how.
+The problem is that there's no off-the-shelf environment for this. Generic RL benchmarks (pendulum, lunar lander, MuJoCo arms, humanoids) are already well-supported and well-documented, but they're also everywhere. I wanted to work on something that required building from the ground up: a custom problem, a custom environment, and a guidance agent that had to learn interception behavior without being told how.
 
 Before jumping to a full 3D simulator like Isaac Lab, the approach was to get an abstract version working first. A 2D Gymnasium environment with realistic TVC physics, a five-stage curriculum, and observations grounded in real guidance system principles. The idea was to validate the approach in a simpler space before scaling it up.
 
@@ -95,7 +97,7 @@ n_envs        = 8
 
 ## Curriculum
 
-Training progresses through five stages of increasing difficulty, each fine-tuned from the previous stage's checkpoint.
+Training progresses through five stages of increasing difficulty, each fine-tuned from the previous stage's checkpoint. Each gif below is a 10-episode evaluation of that stage's final model.
 
 | Stage | Target Behavior               | Obstacles | Key Challenge                            |
 |-------|-------------------------------|-----------|------------------------------------------|
@@ -107,6 +109,22 @@ Training progresses through five stages of increasing difficulty, each fine-tune
 | 5     | Evasion + obstacle luring     | 2–3       | Target uses obstacles as shields         |
 
 Stages requiring significant behavioral restructuring (moving-target transitions) use near-scratch entropy coefficients rather than conservative fine-tuning, because the policy's strategy — not just its magnitude — must change.
+
+**Stage 0** — static target, basic intercept geometry
+
+![Stage 0](assets/stage0.gif)
+
+**Stage 1** — target begins drifting mid-episode
+
+![Stage 1](assets/stage1.gif)
+
+**Stage 2** — target bounces vertically, agent must lead
+
+![Stage 2](assets/stage2.gif)
+
+**Stage 3** — active perpendicular evasion with two obstacles
+
+![Stage 3](assets/stage3.gif)
 
 ---
 
