@@ -2,6 +2,8 @@
 
 A reinforcement learning agent trained to intercept a moving, evasive target in a custom 2D physics environment. The agent controls a continuously thrusting rocket using only nozzle gimbal rate — a single continuous input that deflects thrust over time — and must intercept the target before fuel runs out.
 
+![Policy VS Human](assets/policy_vs_human.gif)
+
 ---
 
 ## Background
